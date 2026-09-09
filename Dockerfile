@@ -1,17 +1,26 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package*.json ./
-COPY prisma ./prisma/
-
-RUN npm install
-
-COPY . .
+COPY . . 
+ ### If there wa no postinsall i could have copied after as node_modules have cached 
+RUN npm install 
 
 RUN npm run build
 
-EXPOSE 5000
-ENV PORT=5000
 
+### Production Stage
+FROM node:20-alpine AS prod
+
+WORKDIR /app
+
+COPY package*.json ./
+COPY --from=builder /app/prisma ./prisma
+RUN npm i --only=production
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+COPY --from=builder /app/dist ./dist
+EXPOSE 5000
 CMD ["node", "dist/server.js"]
