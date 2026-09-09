@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import userRoutes from './Interfaces/Routes/userRoutes';
 import interviewRoutes from './Interfaces/Routes/interviewRoutes';
 import quizRoutes from './Interfaces/Routes/quizRoutes';
@@ -46,5 +46,5 @@ app.use('/api/payments', paymentRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(Server is running on port );
+  console.log(`Server is running on port ${PORT}`);
 });
