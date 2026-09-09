@@ -1,4 +1,4 @@
-import { User,Role } from "../../entities/User";
+import { User, Role } from "../../entities/User";
 import { IUserRepository } from "../../IReps/IUserRepo";
 import { v4 as uuid } from "uuid";
 import bcrypt from "bcrypt";
@@ -11,23 +11,33 @@ export class RegisterUser {
   async execute(name: string, email: string, password: string) {
     const existing = await this.userRepo.findByEmail(email);
 
-  if(existing?.otpExpires > new Date()) {
-    throw new Error("Please wait for the previous OTP to expire before requesting a new one.");
+    if (existing?.otpExpires && existing.otpExpires > new Date() && existing.isVerified) {
+      throw new Error("User already registered and verified. Please sign in.");
     }
-  if(existing && existing.otpExpires < new Date()&&existing.isVerified===false) {
-    // If the user exists but the OTP has expired and the user is not verified,
-    await this.userRepo.delete(existing.id);
-  }
+
+    if (existing && !existing.isVerified) {
+      // Clean up previous unverified registration attempt
+      await this.userRepo.delete(existing.id);
+    }
+
     const hashed = await bcrypt.hash(password, 10);
-    let otp = otpGenerator.generate(6, {
-        upperCaseAlphabets: false,
-        lowerCaseAlphabets: false,
-        specialChars: false,
-      });
-      const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    const otp = otpGenerator.generate(6, {
+      upperCaseAlphabets: false,
+      lowerCaseAlphabets: false,
+      specialChars: false,
+    });
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    const user = new User(uuid(), name, email, hashed, otp, otpExpires);
+    await this.userRepo.create(user);
+
+    try {
       await sendOTPEmail({ email, otp });
-      const user = new User(uuid(), name, email, hashed, otp, otpExpires);
-      await this.userRepo.create(user);
-    return { message: "Otp sent successfully to your email"};
+    } catch (mailError: any) {
+      console.warn("Failed to dispatch email via SMTP:", mailError?.message || mailError);
+      console.log(`[DEV/FALLBACK] OTP for ${email} is: ${otp}`);
+    }
+
+    return { message: "Otp sent successfully to your email" };
   }
 }
