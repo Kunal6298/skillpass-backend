@@ -10,8 +10,8 @@ import { sendProfileUpdateEmail } from "../utils/mail-config-updateProfile";
 
 // Instantiate Razorpay client
 const razorpay = new Razorpay({
-  key_id: process.env.KEYID!,
-  key_secret: process.env.RAZOR_KEYSEC!,
+  key_id: process.env.KEYID || process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+  key_secret: process.env.RAZOR_KEYSEC || process.env.RAZORPAY_KEY_SECRET || 'dummy_secret',
 });
 let exploreCache: { data: any; expiresAt: number } | null = null;
 
@@ -436,7 +436,7 @@ async createOrder({
     // 1) Verify Razorpay signature
     const bodyToSign = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZOR_KEYSEC!)
+      .createHmac("sha256", (process.env.RAZOR_KEYSEC || process.env.RAZORPAY_KEY_SECRET || ""))
       .update(bodyToSign)
       .digest("hex");
     if (expectedSignature !== razorpaySignature) {
@@ -1144,7 +1144,7 @@ async submitInterviewSessionQuestionAnswer(
     // Verify signature
     const bodyToSign = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZOR_KEYSEC!)
+      .createHmac("sha256", (process.env.RAZOR_KEYSEC || process.env.RAZORPAY_KEY_SECRET || ""))
       .update(bodyToSign)
       .digest("hex");
 
