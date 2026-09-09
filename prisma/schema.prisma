@@ -1,0 +1,432 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Certificate {
+  id         String   @id @default(uuid())
+  userId     String
+  quizId     String
+  issuedAt   DateTime @default(now())
+  score      Float
+  count      Int
+  totalScore Float
+  quiz       Quiz     @relation(fields: [quizId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, quizId])
+  @@index([quizId], map: "Certificate_quizId_fkey")
+}
+
+model LearningPath {
+  id          String             @id @default(uuid())
+  title       String
+  description String?
+  createdAt   DateTime           @default(now())
+  items       LearningPathItem[]
+  users       UserTestSeries[]
+  thumbnailURL String?
+  updatedAt DateTime @default(now()) 
+
+}
+
+model LearningPathItem {
+  id             String       @id @default(uuid())
+  learningPathId String
+  learningPath   LearningPath @relation(fields: [learningPathId], references: [id])
+  type           ResourceType
+  order          Int
+  quizId         String?
+  quiz           Quiz?        @relation(fields: [quizId], references: [id])
+  resourceTitle  String?
+  resourceUrl    String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([learningPathId, quizId])
+  @@index([learningPathId, order])
+}
+
+enum ResourceType {
+  QUIZ
+  ARTICLE
+  VIDEO
+  LINK
+}
+
+model AttemptAnswer {
+  id         String  @id @default(uuid())
+  attemptId  String
+  questionId String
+  selected   Json // Could be array for multiple choice
+  correct    Boolean
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id])
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@index([attemptId])
+}
+
+model UserTestSeries {
+  testSeriesId String
+  userId       String
+
+  user       User         @relation(fields: [userId], references: [id])
+  testSeries LearningPath @relation(fields: [testSeriesId], references: [id])
+
+  @@id([testSeriesId, userId])
+}
+
+model User {
+  id              String           @id @default(uuid())
+  name            String
+  email           String           @unique
+  password        String
+  isVerified      Boolean          @default(false)
+  otp             String?
+  otpExpires      DateTime?
+  otpPurpose      String           @default("register")
+  createdAt       DateTime         @default(now())
+  role            Prisma_Role      @default(Default)
+  profilePic      String           @default("/user.jpg")
+  certificates    Certificate[]
+  quizzesCreated  Quiz[]           @relation("QuizCreator")
+  quizAttempts    QuizAttempt[]
+  quizRatings     QuizRating[]
+  creatorVerified Boolean          @default(false)
+  referredAs      Referral[]       @relation("ReferredUser")
+  referralsMade   Referral[]       @relation("Referrer")
+  referralTokens  ReferralToken[]  @relation("UserReferralTokens")
+  quizPayments    QuizPayment[]
+  testSeries      UserTestSeries[]
+  reviews         Review[]
+  creatorProfile  CreatorProfile?
+  QuizDiscussion  QuizDiscussion[]
+  UserXP          UserXP[]
+  UserBadge       UserBadge[]
+  TokenLeft       Int @default(0)
+   interviewSessions InterviewSession[]
+  interviewPayments InterviewPayment[]
+}
+
+model Quiz {
+  id              String             @id @default(uuid())
+  title           String
+  description     String
+  createdAt       DateTime           @default(now())
+  creatorId       String
+  courseId        String?
+  difficulty      Prisma_Difficulty
+  visibleToPublic Boolean            @default(true)
+  backtrack       Boolean            @default(true)
+  duration        Int
+  randomize       Boolean            @default(false)
+  thumbnailURL    String             @default("https://res.cloudinary.com/dcn4q3zt1/image/upload/pexels.jpg")
+  avgRating       Float              @default(0)
+  currency        String?            @default("inr")
+  price           Float              @default(0)
+  creatorName     String
+  verified        Boolean            @default(false)
+  certificates    Certificate[]
+  questions       Question[]
+  course          Course?            @relation(fields: [courseId], references: [id])
+  creator         User               @relation("QuizCreator", fields: [creatorId], references: [id])
+  learningItems   LearningPathItem[]
+
+  quizAttempts   QuizAttempt[]
+  quizRatings    QuizRating[]
+  referrals      Referral[]
+  referralTokens ReferralToken[]  @relation("QuizReferralTokens")
+  quizTags       QuizTag[]
+  reviews        Review[]
+  quizPayments   QuizPayment[]
+  QuizDiscussion QuizDiscussion[]
+
+  @@index([courseId], map: "Quiz_courseId_fkey")
+  @@index([creatorId], map: "Quiz_creatorId_fkey")
+}
+
+model Course {
+  id         String      @id @default(uuid())
+  name       String
+  url        String?     @unique
+  quizzes    Quiz[]
+  courseTags CourseTag[]
+}
+
+model CourseTag {
+  courseId String
+  tagId    String
+
+  course Course @relation(fields: [courseId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([courseId, tagId])
+}
+
+model Question {
+  id             String          @id @default(uuid())
+  quizId         String
+  type           QuestionType
+  answerText     String?
+  attachFileType String?
+  attachFileURL  String?
+  correctAnswers Json
+  options        Json
+  points         Int
+  text           String
+  negPoints      Int
+  quiz           Quiz            @relation(fields: [quizId], references: [id])
+  explanation    String?
+  AttemptAnswers AttemptAnswer[]
+
+  @@index([quizId], map: "Question_quizId_fkey")
+}
+
+model QuizDiscussion {
+  id        String   @id @default(uuid())
+  quizId    String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([quizId])
+  @@index([userId])
+}
+
+enum AttemptStatus {
+  STARTED
+  COMPLETED
+  ABANDONED
+  TIMED_OUT
+}
+
+model QuizAttempt {
+  id               String          @id @default(uuid())
+  userId           String
+  quizId           String
+  attemptNumber    Int
+  score            Float?
+  totalScore       Float           @default(0)
+  startedAt        DateTime        @default(now())
+  finishedAt       DateTime?
+  status           AttemptStatus   @default(STARTED)
+  quiz             Quiz            @relation(fields: [quizId], references: [id])
+  user             User            @relation(fields: [userId], references: [id])
+  AttemptAnswers   AttemptAnswer[]
+  analysisAccessed Boolean         @default(false)
+
+  @@index([quizId], map: "QuizAttempt_quizId_fkey")
+  @@index([userId], map: "QuizAttempt_userId_fkey")
+}
+
+model Referral {
+  id             String    @id @default(uuid())
+  referrerId     String
+  referredUserId String?
+  quizId         String
+  earnedAmount   Float     @default(0)
+  createdAt      DateTime  @default(now())
+  redeemed       Boolean   @default(false)
+  settledDate    DateTime?
+  quiz           Quiz      @relation(fields: [quizId], references: [id])
+  referredUser   User?     @relation("ReferredUser", fields: [referredUserId], references: [id])
+  referrer       User      @relation("Referrer", fields: [referrerId], references: [id])
+
+  @@index([quizId], map: "Referral_quizId_fkey")
+  @@index([referredUserId], map: "Referral_referredUserId_fkey")
+  @@index([referrerId], map: "Referral_referrerId_fkey")
+}
+
+model ReferralToken {
+  token      String   @id @default(uuid())
+  quizId     String
+  referrerId String
+  createdAt  DateTime @default(now())
+  quiz       Quiz     @relation("QuizReferralTokens", fields: [quizId], references: [id])
+  referrer   User     @relation("UserReferralTokens", fields: [referrerId], references: [id])
+  counter    Int      @default(0)
+  expired    Boolean  @default(false)
+
+  @@index([quizId], map: "ReferralToken_quizId_fkey")
+  @@index([referrerId], map: "ReferralToken_referrerId_fkey")
+}
+
+model Tag {
+  id         String      @id @default(uuid())
+  name       String      @unique
+  courseTags CourseTag[]
+  quizTags   QuizTag[]
+}
+
+model QuizRating {
+  id        String   @id @default(uuid())
+  userId    String
+  quizId    String
+  rating    Float
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, quizId])
+  @@index([quizId], map: "QuizRating_quizId_fkey")
+}
+
+enum Prisma_Role {
+  Default
+  Creator
+  SuperAdmin
+}
+
+enum Prisma_Difficulty {
+  Easy
+  Medium
+  Hard
+}
+
+model QuizTag {
+  quizId String
+  tagId  String
+
+  quiz Quiz @relation(fields: [quizId], references: [id])
+  tag  Tag  @relation(fields: [tagId], references: [id])
+
+  @@id([quizId, tagId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  quizId    String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quiz Quiz @relation(fields: [quizId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+model QuizPayment {
+  id            String    @id @default(uuid())
+  userId        String
+  quizId        String
+  orderId       String
+  paymentId     String
+  amount        Float
+  currency      String
+  paidAt        DateTime  @default(now())
+  redeemRequest Boolean   @default(false)
+  settled       Boolean   @default(false)
+  settledAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+  quiz Quiz @relation(fields: [quizId], references: [id])
+
+  @@unique([paymentId])
+  @@index([quizId])
+  @@index([userId])
+  @@index([settled])
+}
+
+enum QuestionType {
+  SingleChoice
+  MultipleChoice
+  Subjective
+  File
+}
+
+model CreatorProfile {
+  id               String  @id @default(uuid())
+  userId           String  @unique
+  phoneNumber      String
+  expertise        String
+  bio              String
+  experiencePoint1 String?
+  experiencePoint2 String?
+  experiencePoint3 String?
+  experiencePoint4 String?
+  experiencePoint5 String?
+
+  telegramLink  String?
+  instagramLink String?
+  linkedinLink  String?
+  portfolioLink String?
+
+  status VerificationStatus @default(PENDING)
+  user   User               @relation(fields: [userId], references: [id])
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model UserXP {
+  userId       String    @id
+  xp           Int       @default(0)
+  streak       Int       @default(0)
+  lastQuizDate DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  badgeName String
+  earnedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+model InterviewSession {
+  id                 String           @id @default(uuid())
+  userId             String
+  role               String
+  startedAt          DateTime         @default(now())
+  finishedAt         DateTime?
+  status             InterviewStatus  @default(STARTED)
+  satisfactionScore  Float?           // 0-100, running average
+  RemaingToken       Int @default(5000)
+  timeLimitMinutes   Int              @default(30) // default 10 minutes per session
+
+  user               User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+enum InterviewStatus {
+  STARTED
+  COMPLETED
+  ABANDONED
+  TIMED_OUT
+}
+
+
+model InterviewPayment {
+  id            String    @id @default(uuid())
+  userId        String
+  orderId       String
+  paymentId     String
+  amount        Float
+  currency      String
+  paidAt        DateTime  @default(now())
+  settled       Boolean   @default(false)
+  settledAt     DateTime?
+
+  user          User              @relation(fields: [userId], references: [id])
+
+  @@unique([paymentId])
+  @@index([userId])
+
+  @@index([settled])
+}
