@@ -34,4 +34,19 @@ router.post("/end", (req, res, next) => { authMiddleware(req, res, next) }, asyn
 router.post("/purchase", (req, res, next) => { authMiddleware(req, res, next) }, async (req, res) => { await controller.purchaseTokens(req, res) });
 router.post("/purchase-verify", (req, res, next) => { authMiddleware(req, res, next) }, async (req, res) => { await controller.purchaseTokensVerify(req, res) });
 router.get('/token-left', (req, res, next) => { authMiddleware(req, res, next) }, async (req, res) => { await controller.getTokensLeft(req, res) });
+
+router.post('/claim-tokens', (req, res, next) => { authMiddleware(req, res, next) }, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { TokenLeft: 1000000 },
+    });
+    return res.json({ message: '1,000,000 interview tokens granted!', tokensLeft: 1000000 });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

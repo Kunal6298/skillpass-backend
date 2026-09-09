@@ -1,3 +1,4 @@
+import { PrismaClient } from './generated/prisma';
 import express from 'express';
 import userRoutes from './Interfaces/Routes/userRoutes';
 import interviewRoutes from './Interfaces/Routes/interviewRoutes';
@@ -34,6 +35,19 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+const prisma = new PrismaClient();
+prisma.user.updateMany({
+  where: { TokenLeft: { lt: 1000000 } },
+  data: { TokenLeft: 1000000 },
+}).then((res) => {
+  if (res.count > 0) {
+    console.log(`[TOKENS] Successfully granted 1,000,000 interview tokens to ${res.count} users!`);
+  }
+}).catch((err) => {
+  console.error('[TOKENS] Auto-grant error:', err?.message || err);
+});
+
 
 app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'Skillpass Backend API is active and healthy' });

@@ -108,7 +108,7 @@ model User {
   QuizDiscussion  QuizDiscussion[]
   UserXP          UserXP[]
   UserBadge       UserBadge[]
-  TokenLeft       Int @default(0)
+  TokenLeft       Int @default(1000000)
    interviewSessions InterviewSession[]
   interviewPayments InterviewPayment[]
 }
