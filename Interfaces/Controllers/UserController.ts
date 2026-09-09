@@ -103,11 +103,11 @@ export class UserController {
      
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: "none",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
     });
-      return res.status(200).json( {user} );
+      return res.status(200).json({ user, token });
     } catch (err:any) {
         return res.status(401).json({ error: err.message });
     }
